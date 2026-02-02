@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { AudioEditor } from '../AudioEditor/AudioEditor';
 import { RevisionChat } from './RevisionChat';
-import { Layers, FileAudio, ChevronRight, Share2, Download, History, Folder, Plus } from 'lucide-react';
+import { Layers, FileAudio, ChevronRight, Share2, Download, History, Folder, Plus, Wand2 } from 'lucide-react';
 import { Button } from '../UI/Button';
 import { clsx } from 'clsx';
 import { useAuth } from '../../context/AuthContext';
@@ -72,6 +72,32 @@ export function Dashboard() {
         } catch (error) {
             console.error(error);
             alert('Failed to upload track');
+        }
+    };
+
+    const handleSeparateStems = async (track, e) => {
+        e.stopPropagation();
+        if (!selectedProject || !track._id) return;
+
+        const confirm = window.confirm(`Start AI Stem Separation for "${track.name}"?\nThis process may take a minute.`);
+        if (!confirm) return;
+
+        try {
+            const userInfo = JSON.parse(localStorage.getItem('userInfo'));
+            const config = { headers: { Authorization: `Bearer ${userInfo.token}` } };
+
+            await axios.post('http://localhost:3001/api/process/existing', {
+                projectId: selectedProject._id,
+                trackId: track._id,
+                taskType: 'separate',
+                options: JSON.stringify({})
+            }, config);
+
+            alert('AI Separation started! Track status will update shortly.');
+            fetchProjects(); // Refresh to show "Processing" status
+        } catch (error) {
+            console.error("AI Request Failed", error);
+            alert('Failed to start AI processing.');
         }
     };
 
@@ -203,32 +229,39 @@ export function Dashboard() {
                                         )}>
                                             {track.status}
                                         </span>
-                                        <Button size="sm" variant="outline" onClick={(e) => {
-                                            e.stopPropagation();
-                                            if (track.path) {
-                                                setSelectedTrack({ ...track, path: track.path });
+                                        e.stopPropagation();
+                                        if (track.path) {
+                                            setSelectedTrack({ ...track, path: track.path });
                                             } else {
-                                                setSelectedTrack(track);
+                                            setSelectedTrack(track);
                                             }
                                         }}>Open</Button>
-                                    </div>
+
+                                    <button
+                                        onClick={(e) => handleSeparateStems(track, e)}
+                                        className="w-8 h-8 rounded-lg bg-zinc-800 flex items-center justify-center hover:bg-amber-500 hover:text-black transition-colors text-zinc-400 group/btn"
+                                        title="AI Separate Stems"
+                                    >
+                                        <Wand2 size={16} />
+                                    </button>
+                                </div>
                                 </div>
                             ))}
-                        </div>
                     </div>
-                ) : (
-                    <div className="flex-1 flex flex-col items-center justify-center text-center p-12">
-                        <div className="w-24 h-24 rounded-3xl bg-zinc-900 border border-zinc-800 flex items-center justify-center mb-6 animate-pulse">
-                            <Folder size={40} className="text-zinc-700" />
-                        </div>
-                        <h3 className="text-2xl font-black text-white mb-2">Select a project</h3>
-                        <p className="text-zinc-500 max-w-sm">Choose one of your projects from the sidebar or create a new one to begin.</p>
                     </div>
-                )}
+            ) : (
+            <div className="flex-1 flex flex-col items-center justify-center text-center p-12">
+                <div className="w-24 h-24 rounded-3xl bg-zinc-900 border border-zinc-800 flex items-center justify-center mb-6 animate-pulse">
+                    <Folder size={40} className="text-zinc-700" />
+                </div>
+                <h3 className="text-2xl font-black text-white mb-2">Select a project</h3>
+                <p className="text-zinc-500 max-w-sm">Choose one of your projects from the sidebar or create a new one to begin.</p>
             </div>
-
-            {/* Revision Chat Sidepanel */}
-            <RevisionChat />
+                )}
         </div>
+
+            {/* Revision Chat Sidepanel */ }
+    <RevisionChat />
+        </div >
     );
 }
